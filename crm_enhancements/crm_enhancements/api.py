@@ -8,7 +8,7 @@ def enqueue_project_creation(opportunity_name, user):
     """
     frappe.enqueue(
         # This is the explicit path to our worker function below.
-        'crm_enhancements.api.create_project_from_opportunity_background',
+        'crm_enhancements.crm_enhancements.api.create_project_from_opportunity_background',
         queue='long',
         timeout=1800,
         opportunity_name=opportunity_name,
