@@ -1,19 +1,27 @@
 import frappe
 
-# The enqueue function remains the same.
+# The enqueue function now accepts 'project_template' and passes it on.
 @frappe.whitelist()
-def enqueue_project_creation(opportunity_name, user):
+def enqueue_project_creation(opportunity_name, user, project_template):
+    """
+    Called by the client to quickly add the main task to the background queue.
+    """
     frappe.enqueue(
         'crm_enhancements.crm_enhancements.api.create_project_from_opportunity_background',
         queue='long',
         timeout=1800,
         opportunity_name=opportunity_name,
-        user=user
+        user=user,
+        project_template=project_template # Pass the template to the background job
     )
     return {'status': 'queued'}
 
-# The background worker gets the ability to broadcast its status.
-def create_project_from_opportunity_background(opportunity_name, user):
+
+# The background worker now accepts 'project_template' and uses it.
+def create_project_from_opportunity_background(opportunity_name, user, project_template):
+    """
+    This function does the heavy lifting in the background.
+    """
     project_doc = None
     try:
         opp = frappe.get_doc('Opportunity', opportunity_name)
@@ -21,9 +29,14 @@ def create_project_from_opportunity_background(opportunity_name, user):
             return
 
         project = frappe.new_doc('Project')
+        
+        # THIS IS THE NEW LOGIC: Apply the selected template first.
+        if project_template:
+            project.project_template = project_template
+        
         project.project_name = opp.custom_opportunity_name
 
-        # --- All field and table mapping logic remains exactly the same ---
+        # --- All field and table mapping logic remains the same ---
         direct_mappings = {
             'custom_scope_rank': 'custom_scope_rank', 'custom_schedule_rank': 'custom_schedule_rank',
             'custom_budget_rank': 'custom_budget_rank', 'custom_description': 'custom_project_description',
@@ -56,7 +69,7 @@ def create_project_from_opportunity_background(opportunity_name, user):
                 new_row.update(source_row.as_dict())
 
         project.insert(ignore_permissions=True)
-        project_doc = project.as_dict() # Store the project data for the broadcast
+        project_doc = project.as_dict()
         opp.custom_created_project = project.name
         opp.save(ignore_permissions=True)
         frappe.db.commit()
@@ -64,8 +77,7 @@ def create_project_from_opportunity_background(opportunity_name, user):
     except Exception:
         frappe.log_error(frappe.get_traceback(), "CRM Enhancements App Background Job Failed")
 
-    # --- THIS IS THE NEW REAL-TIME LOGIC ---
-    # After all work is done (or has failed), broadcast a status update.
+    # The real-time broadcast logic remains the same.
     frappe.publish_realtime(
         event='project_creation_status',
         message={
@@ -73,5 +85,5 @@ def create_project_from_opportunity_background(opportunity_name, user):
             'project_doc': project_doc,
             'opportunity_name': opportunity_name
         },
-        user=user # Send the message only to the user who initiated the action.
+        user=user
     )
