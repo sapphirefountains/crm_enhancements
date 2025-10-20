@@ -54,6 +54,20 @@ def create_project_from_opportunity_background(opportunity_name, user, project_t
         }
         for source_field, target_field in direct_mappings.items():
             project.set(target_field, opp.get(source_field))
+
+        priority_order = ["Design", "Build", "Service", "Rent"]
+        project_type_value = None
+
+        value_streams = [d.get("value_stream") for d in opp.get("custom_value_stream")]
+
+        for p in priority_order:
+            if p in value_streams:
+                project_type_value = p
+                break
+
+        if project_type_value:
+            project.project_type = project_type_value
+
         child_table_mappings = {
             'custom_value_stream': 'custom_value_stream', 'custom_contacts__address_table': 'custom_contacts__address_table',
             'custom_scope_contributors': 'custom_scope_contributors', 'custom_design_customer_requests': 'custom_design_customer_requests',
