@@ -24,7 +24,9 @@ def create_project_from_opportunity_background(opportunity_name, user, project_t
     """
     project_doc = None
     try:
-        with frappe.utils.switch_user('Administrator'):
+        original_user = frappe.session.user
+        try:
+            frappe.set_user('Administrator')
             opp = frappe.get_doc('Opportunity', opportunity_name)
             if opp.custom_created_project:
                 return
@@ -88,6 +90,8 @@ def create_project_from_opportunity_background(opportunity_name, user, project_t
             opp.custom_created_project = project.name
             opp.save(ignore_permissions=True)
             frappe.db.commit()
+        finally:
+            frappe.set_user(original_user)
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), "CRM Enhancements App Background Job Failed")
