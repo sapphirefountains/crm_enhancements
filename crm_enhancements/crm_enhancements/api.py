@@ -117,6 +117,23 @@ def create_project_from_opportunity_background(opportunity_name, user, project_t
 					new_row.update(source_row.as_dict())
 
 			project.insert(ignore_permissions=True)
+
+			attachments = frappe.get_all(
+				"File",
+				filters={"attached_to_doctype": "Opportunity", "attached_to_name": opportunity_name},
+				fields=["file_name", "file_url", "is_private", "folder"],
+			)
+			for attachment in attachments:
+				file_doc = frappe.new_doc("File")
+				file_doc.file_name = attachment.file_name
+				file_doc.file_url = attachment.file_url
+				file_doc.is_private = attachment.is_private
+				file_doc.attached_to_doctype = "Project"
+				file_doc.attached_to_name = project.name
+				if attachment.folder:
+					file_doc.folder = attachment.folder
+				file_doc.insert(ignore_permissions=True)
+
 			project_doc = project.as_dict()
 			opp.custom_created_project = project.name
 			opp.save(ignore_permissions=True)
