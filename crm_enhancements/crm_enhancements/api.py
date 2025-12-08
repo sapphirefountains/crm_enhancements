@@ -158,3 +158,15 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 			},
 			user=user,
 		)
+
+		if project_doc:
+			subject = f"New Project Created: {project_doc.get('project_name')}"
+			message = f"""
+				<p>A new project has been created from Opportunity <b>{opportunity_name}</b>.</p>
+				<p><a href="{frappe.utils.get_url_to_form('Project', project_doc.get('name'))}">Click here to view the project</a></p>
+			"""
+			frappe.sendmail(
+				recipients=[user],
+				subject=subject,
+				message=message
+			)
