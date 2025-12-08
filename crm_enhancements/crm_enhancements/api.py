@@ -3,7 +3,7 @@ import frappe
 
 # The enqueue function now accepts 'project_template' and passes it on.
 @frappe.whitelist()
-def enqueue_project_creation(opportunity_name, user, project_template):
+def enqueue_project_creation(opportunity_name, users, project_template):
 	"""
 	Called by the client to quickly add the main task to the background queue.
 	"""
@@ -12,14 +12,14 @@ def enqueue_project_creation(opportunity_name, user, project_template):
 		queue="long",
 		timeout=1800,
 		opportunity_name=opportunity_name,
-		user=user,
+		users=users,
 		project_template=project_template,  # Pass the template to the background job
 	)
 	return {"status": "queued"}
 
 
 # The background worker now accepts 'project_template' and uses it.
-def create_project_from_opportunity_background(opportunity_name, user, project_template):
+def create_project_from_opportunity_background(opportunity_name, users, project_template):
 	"""
 	This function does the heavy lifting in the background.
 	"""
@@ -145,12 +145,16 @@ def create_project_from_opportunity_background(opportunity_name, user, project_t
 		frappe.log_error(frappe.get_traceback(), "CRM Enhancements App Background Job Failed")
 
 	# The real-time broadcast logic remains the same.
-	frappe.publish_realtime(
-		event="project_creation_status",
-		message={
-			"status": "success" if project_doc else "failed",
-			"project_doc": project_doc,
-			"opportunity_name": opportunity_name,
-		},
-		user=user,
-	)
+	if isinstance(users, str):
+		users = users.split(",")
+
+	for user in users:
+		frappe.publish_realtime(
+			event="project_creation_status",
+			message={
+				"status": "success" if project_doc else "failed",
+				"project_doc": project_doc,
+				"opportunity_name": opportunity_name,
+			},
+			user=user,
+		)
