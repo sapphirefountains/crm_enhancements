@@ -33,6 +33,7 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 				return
 
 			project = frappe.new_doc("Project")
+			project.status = "Active"
 
 			# Check for a misconfigured Task doctype before applying the template
 			# to prevent a ModuleNotFoundError on project.insert()
@@ -116,6 +117,17 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 					new_row = project.append(target_table, {})
 					new_row.update(source_row.as_dict())
 
+			# Map Opportunity notes to Project comments
+			if opp.get("notes"):
+				project.set("custom_opportunity_comments", [])
+				for note_row in opp.get("notes"):
+					new_comment = project.append("custom_opportunity_comments", {})
+					new_comment.notes = note_row.note
+					new_comment.added_by = note_row.added_by
+					new_comment.added_on = note_row.added_on
+
+			project.custom_opportunity_notes = opp.notes_html
+
 			project.insert(ignore_permissions=True)
 
 			attachments = frappe.get_all(
@@ -165,8 +177,4 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 				<p>A new project has been created from Opportunity <b>{opportunity_name}</b>.</p>
 				<p><a href="{frappe.utils.get_url_to_form('Project', project_doc.get('name'))}">Click here to view the project</a></p>
 			"""
-			frappe.sendmail(
-				recipients=[user],
-				subject=subject,
-				message=message
-			)
+			frappe.sendmail(recipients=[user], subject=subject, message=message)
