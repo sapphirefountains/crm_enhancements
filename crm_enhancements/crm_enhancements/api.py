@@ -118,15 +118,28 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 					new_row.update(source_row.as_dict())
 
 			# Map Opportunity notes to Project comments
+			notes_html_parts = []
 			if opp.get("notes"):
 				project.set("custom_opportunity_comments", [])
 				for note_row in opp.get("notes"):
+					# Add to Project Comments child table
 					new_comment = project.append("custom_opportunity_comments", {})
 					new_comment.notes = note_row.note
 					new_comment.added_by = note_row.added_by
 					new_comment.added_on = note_row.added_on
 
-			project.custom_opportunity_notes = opp.notes_html
+					# Build HTML for custom_opportunity_notes
+					notes_html_parts.append(
+						f"""<div style="margin-bottom: 10px; padding: 10px; border: 1px solid #d1d8dd; border-radius: 4px; background-color: #f9f9f9;">
+							<div style="margin-bottom: 5px;">
+								<strong>{frappe.utils.escape_html(str(note_row.added_by))}</strong>
+								<span style="color: #6c757d; font-size: 0.9em; margin-left: 5px;">on {frappe.utils.escape_html(str(note_row.added_on))}</span>
+							</div>
+							<div>{frappe.utils.escape_html(str(note_row.note))}</div>
+						</div>"""
+					)
+
+			project.custom_opportunity_notes = "".join(notes_html_parts)
 
 			project.insert(ignore_permissions=True)
 
