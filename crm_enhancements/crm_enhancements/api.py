@@ -141,7 +141,14 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 
 			project.custom_opportunity_notes = "".join(notes_html_parts)
 
+			# Bypass validation to avoid "Status cannot be Open" error if Workflow forces invalid status
+			project.flags.ignore_validate = True
 			project.insert(ignore_permissions=True)
+
+			# Ensure status is Active even if Workflow overwrote it
+			if project.status != "Active":
+				project.db_set("status", "Active")
+				project.status = "Active"
 
 			attachments = frappe.get_all(
 				"File",
