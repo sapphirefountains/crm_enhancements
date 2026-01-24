@@ -120,13 +120,17 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 			# Map Opportunity notes to Project comments
 			notes_html_parts = []
 			if opp.get("notes"):
-				project.set("custom_opportunity_comments", [])
+				has_comments_field = project.meta.get_field("custom_opportunity_comments")
+				if has_comments_field:
+					project.set("custom_opportunity_comments", [])
+
 				for note_row in opp.get("notes"):
 					# Add to Project Comments child table
-					new_comment = project.append("custom_opportunity_comments", {})
-					new_comment.notes = note_row.note
-					new_comment.added_by = note_row.added_by
-					new_comment.added_on = note_row.added_on
+					if has_comments_field:
+						new_comment = project.append("custom_opportunity_comments", {})
+						new_comment.notes = note_row.note
+						new_comment.added_by = note_row.added_by
+						new_comment.added_on = note_row.added_on
 
 					# Build HTML for custom_opportunity_notes
 					notes_html_parts.append(
