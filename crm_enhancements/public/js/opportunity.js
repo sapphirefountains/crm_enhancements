@@ -40,6 +40,7 @@ frappe.ui.form.on("Opportunity", {
 										fieldtype: "MultiSelect",
 										options: user_options,
 										default: [frappe.session.user],
+										reqd: 1, // Make the selection mandatory
 										description:
 											"Select users to be notified when the project is created.",
 									},

@@ -3,10 +3,16 @@ import frappe
 
 # The enqueue function now accepts 'project_template' and passes it on.
 @frappe.whitelist()
-def enqueue_project_creation(opportunity_name, users, project_template):
+def enqueue_project_creation(opportunity_name, users=None, project_template=None):
 	"""
 	Called by the client to quickly add the main task to the background queue.
 	"""
+	if not users:
+		frappe.throw("Please select at least one user to notify.")
+
+	if not project_template:
+		frappe.throw("Please select a Project Template.")
+
 	frappe.enqueue(
 		"crm_enhancements.crm_enhancements.api.create_project_from_opportunity_background",
 		queue="long",
