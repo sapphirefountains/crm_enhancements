@@ -180,6 +180,38 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 			opp.custom_created_project = project.name
 			opp.save(ignore_permissions=True)
 			frappe.db.commit()
+
+			drive_success = False
+			drive_error_details = None
+
+			# Provision Google Drive Folders
+			if not project.get("custom_drive_folder_id"):
+				try:
+					from crm_enhancements.crm_enhancements.drive_utils import provision_project_folders
+
+					project_folder_name = f"{project.name} {project.project_name}"
+					party_name = project.customer or opp.party_name or "Unknown Customer"
+
+					folder_id, web_view_link = provision_project_folders(project_folder_name, party_name)
+
+					# Update Project
+					project.db_set("custom_drive_folder_id", folder_id)
+					project_doc["custom_drive_folder_id"] = folder_id
+
+					# Attach link
+					drive_link_doc = frappe.new_doc("File")
+					drive_link_doc.file_url = web_view_link
+					drive_link_doc.attached_to_doctype = "Project"
+					drive_link_doc.attached_to_name = project.name
+					drive_link_doc.is_private = 0
+					drive_link_doc.insert(ignore_permissions=True)
+
+					frappe.db.commit()
+					drive_success = True
+				except Exception:
+					drive_error_details = frappe.get_traceback()
+					frappe.log_error(drive_error_details, "[Google Drive Integration] Folder Creation Failed")
+
 		finally:
 			frappe.set_user(original_user)
 
@@ -191,13 +223,20 @@ def create_project_from_opportunity_background(opportunity_name, users, project_
 		users = users.split(",")
 
 	for user in users:
+		message_payload = {
+			"status": "success" if project_doc else "failed",
+			"project_doc": project_doc,
+			"opportunity_name": opportunity_name,
+		}
+
+		if project_doc:
+			message_payload["drive_success"] = drive_success
+			if drive_error_details:
+				message_payload["drive_error"] = str(drive_error_details)
+
 		frappe.publish_realtime(
 			event="project_creation_status",
-			message={
-				"status": "success" if project_doc else "failed",
-				"project_doc": project_doc,
-				"opportunity_name": opportunity_name,
-			},
+			message=message_payload,
 			user=user,
 		)
 

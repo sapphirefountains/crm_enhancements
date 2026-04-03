@@ -45,6 +45,18 @@ app_license = "mit"
 # include js in doctype views
 doctype_js = {"Opportunity": "public/js/opportunity.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+
+custom_fields = {
+	"Project": [
+		{
+			"fieldname": "custom_drive_folder_id",
+			"label": "Drive Folder ID",
+			"fieldtype": "Data",
+			"hidden": 1,
+			"insert_after": "project_name",
+		}
+	]
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
