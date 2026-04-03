@@ -100,15 +100,43 @@ frappe.ui.form.on("Opportunity", {
 		frappe.realtime.on("project_creation_status", function (data) {
 			if (data.opportunity_name === frm.doc.name) {
 				if (data.status === "success") {
+					let success_message = __("Project {0} created successfully.", [
+						`<a href="/app/project/${data.project_doc.name}">${data.project_doc.name}</a>`,
+					]);
+
+					if (data.drive_success) {
+						success_message = __(
+							"Project {0} created and Google Drive directory provisioned successfully.",
+							[
+								`<a href="/app/project/${data.project_doc.name}">${data.project_doc.name}</a>`,
+							]
+						);
+					}
+
 					frappe.show_alert(
 						{
-							message: __(
-								`Project <a href="/app/project/${data.project_doc.name}">${data.project_doc.name}</a> created successfully.`
-							),
+							message: success_message,
 							indicator: "green",
 						},
 						10
 					);
+
+					if (data.drive_error) {
+						let msg = `
+							<p>Project created, but folder provisioning failed.</p>
+							<details>
+								<summary>Technical Error Details</summary>
+								<pre style="margin-top: 10px; padding: 10px; background-color: #f8f9fa; border: 1px solid #ddd;">${data.drive_error}</pre>
+							</details>
+							<p><a href="/app/error-log">Check Error Log</a></p>
+						`;
+						frappe.msgprint({
+							title: __("Google Drive Integration Failed"),
+							indicator: "orange",
+							message: msg,
+						});
+					}
+
 					frm.reload_doc();
 				} else {
 					frappe.show_alert(
