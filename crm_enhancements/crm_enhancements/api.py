@@ -24,6 +24,39 @@ def enqueue_project_creation(opportunity_name, users=None, project_template=None
 	return {"status": "queued"}
 
 
+def sync_opportunity_tags(doc, method=None):
+	"""
+	Synchronizes the Opportunity tags with the values in the custom_value_stream child table.
+	"""
+	# 1. Define the possible value stream options
+	value_stream_options = {"Build", "Design", "Rent", "Service"}
+
+	# 2. Get the current selected value streams from the child table
+	selected_value_streams = set()
+	if doc.get("custom_value_stream"):
+		for row in doc.custom_value_stream:
+			if row.get("value_stream"):
+				selected_value_streams.add(row.value_stream)
+
+	# 3. Get existing tags
+	# _user_tags is typically formatted as ",Tag1,Tag2,"
+	current_tags_str = doc.get("_user_tags") or ""
+	current_tags = {tag.strip() for tag in current_tags_str.split(",") if tag.strip()}
+
+	# 4. Remove existing value stream options from the tags to get "other" tags
+	other_tags = current_tags - value_stream_options
+
+	# 5. Combine other tags with the currently selected value streams
+	final_tags = other_tags | selected_value_streams
+
+	# 6. Update the _user_tags field
+	if final_tags:
+		# Format back to ",Tag1,Tag2,"
+		doc._user_tags = "," + ",".join(sorted(list(final_tags))) + ","
+	else:
+		doc._user_tags = None
+
+
 # The background worker now accepts 'project_template' and uses it.
 def create_project_from_opportunity_background(opportunity_name, users, project_template):
 	"""

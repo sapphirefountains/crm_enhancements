@@ -150,13 +150,11 @@ custom_fields = {
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Opportunity": {
+		"before_save": "crm_enhancements.crm_enhancements.api.sync_opportunity_tags"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
