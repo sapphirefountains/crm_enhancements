@@ -37,14 +37,17 @@ function inject_kanban_custom_css() {
 }
 
 function setup_kanban_color_observer(listview) {
-	const targetNode = document.querySelector('.kanban-container');
-	if (!targetNode) {
-		setTimeout(() => setup_kanban_color_observer(listview), 500);
-		return;
-	}
+	console.log("Kanban Debug: Initializing observer...");
+	
+	// Use Frappe's built-in wrapper instead of guessing the class name
+	const targetNode = listview.$result ? listview.$result.get(0) : document.body;
+	
+	console.log("Kanban Debug: Target node found for observer.", targetNode);
 
-	// Initial run
-	apply_kanban_colors(listview);
+	// Delay initial run slightly to allow Vue/Frappe to finish rendering cards
+	setTimeout(() => {
+		apply_kanban_colors(listview);
+	}, 1000);
 
 	const observer = new MutationObserver(() => {
 		apply_kanban_colors(listview);

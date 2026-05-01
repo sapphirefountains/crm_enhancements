@@ -57,6 +57,18 @@ def sync_opportunity_tags(doc, method=None):
 		doc._user_tags = None
 
 
+@frappe.whitelist()
+def sync_opportunity_tags_for_existing(opportunity_name):
+	"""
+	Syncs tags for an existing Opportunity without triggering a full save.
+	Called from the client side when opening an existing record missing tags.
+	"""
+	doc = frappe.get_doc("Opportunity", opportunity_name)
+	sync_opportunity_tags(doc)
+	frappe.db.set_value("Opportunity", opportunity_name, "_user_tags", doc._user_tags)
+	return doc._user_tags
+
+
 # The background worker now accepts 'project_template' and uses it.
 def create_project_from_opportunity_background(opportunity_name, users, project_template):
 	"""

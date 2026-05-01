@@ -1,5 +1,61 @@
+function sync_tags_from_child_table(frm) {
+	let value_streams = (frm.doc.custom_value_stream || []).map(row => row.value_stream).filter(Boolean);
+	let current_tags_str = frm.doc._user_tags || "";
+	let current_tags = current_tags_str.split(",").map(t => t.trim()).filter(Boolean);
+
+	let core_tags = ["Build", "Design", "Rent", "Service"];
+	let other_tags = current_tags.filter(t => !core_tags.includes(t));
+
+	let desired_tags = [...new Set([...other_tags, ...value_streams])];
+	let new_tags_str = desired_tags.length ? "," + desired_tags.sort().join(",") + "," : null;
+
+	if (frm.doc._user_tags !== new_tags_str) {
+		let has_no_core_tags = !current_tags.some(t => core_tags.includes(t));
+
+		// If it's an existing document with missing tags, save it directly to the database via API
+		if (!frm.is_new() && !frm.is_dirty() && has_no_core_tags && value_streams.length > 0) {
+			frappe.call({
+				method: "crm_enhancements.crm_enhancements.api.sync_opportunity_tags_for_existing",
+				args: { opportunity_name: frm.doc.name },
+				callback: function(r) {
+					if (r.message !== undefined) {
+						frm.doc._user_tags = r.message;
+						if (frm.tags && frm.tags.refresh) frm.tags.refresh(frm.doc._user_tags);
+					}
+				}
+			});
+		} else {
+			// Update locally for real-time preview (will be saved when the form is saved)
+			frm.doc._user_tags = new_tags_str;
+			if (frm.tags && frm.tags.refresh) {
+				frm.tags.refresh(frm.doc._user_tags);
+			}
+		}
+	}
+}
+
 frappe.ui.form.on("Opportunity", {
+	setup: function(frm) {
+		// Dynamically bind to the child table's doctype for real-time updates when a row changes
+		let child_df = frappe.meta.get_docfield("Opportunity", "custom_value_stream");
+		if (child_df && child_df.options) {
+			frappe.ui.form.on(child_df.options, {
+				value_stream: function(child_frm, cdt, cdn) {
+					sync_tags_from_child_table(child_frm);
+				}
+			});
+		}
+	},
+	custom_value_stream_add: function(frm) {
+		sync_tags_from_child_table(frm);
+	},
+	custom_value_stream_remove: function(frm) {
+		sync_tags_from_child_table(frm);
+	},
 	refresh: function (frm) {
+		// Sync tags on load
+		sync_tags_from_child_table(frm);
+
 		function toggle_project_button() {
 			if (
 				frm.doc.status === "Closed Won" &&
