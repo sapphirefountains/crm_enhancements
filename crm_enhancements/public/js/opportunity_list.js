@@ -7,23 +7,48 @@ frappe.listview_settings['Opportunity'] = {
 	refresh: function (listview) {
 		console.log("Opportunity listview refresh triggered. View:", listview.view_name);
 		if (listview.view_name === 'Kanban') {
-			console.log("Setting up Kanban color observer.");
+			inject_kanban_custom_css();
 			setup_kanban_color_observer(listview);
 		}
 	}
 };
 
+function inject_kanban_custom_css() {
+	if (document.getElementById('kanban-opportunity-colors')) return;
+
+	const css = `
+		.kanban-card[data-date-status="overdue"], 
+		.kanban-card[data-date-status="overdue"] .kanban-card-body {
+			background-color: #ffebee !important;
+		}
+		.kanban-card[data-date-status="soon"], 
+		.kanban-card[data-date-status="soon"] .kanban-card-body {
+			background-color: #fff9c4 !important;
+		}
+		/* Reset for excluded statuses */
+		.kanban-card[data-doc-status="excluded"], 
+		.kanban-card[data-doc-status="excluded"] .kanban-card-body {
+			background-color: var(--card-bg) !important;
+		}
+	`;
+	const style = document.createElement('style');
+	style.id = 'kanban-opportunity-colors';
+	style.innerHTML = css;
+	document.head.appendChild(style);
+	console.log("Custom Kanban CSS injected.");
+}
+
 function setup_kanban_color_observer(listview) {
 	const targetNode = document.querySelector('.kanban-container');
 	if (!targetNode) {
-		setTimeout(() => setup_kanban_color_observer(listview), 200);
+		setTimeout(() => setup_kanban_color_observer(listview), 500);
 		return;
 	}
 
-	apply_kanban_colors(listview);
+	apply_kanban_attributes(listview);
 
-	const observer = new MutationObserver((mutationsList) => {
-		apply_kanban_colors(listview);
+	const observer = new MutationObserver(() => {
+		apply_kanban_attributes(listview);
 	});
 
 	observer.observe(targetNode, { childList: true, subtree: true });
@@ -33,45 +58,38 @@ function setup_kanban_color_observer(listview) {
 	});
 }
 
-function apply_kanban_colors(listview) {
-	if (!listview || !listview.data) {
-		console.log("No listview data found to apply colors.");
-		return;
-	}
+function apply_kanban_attributes(listview) {
+	if (!listview || !listview.data) return;
 
 	const today = frappe.datetime.get_today();
 	const next_7_days = frappe.datetime.add_days(today, 7);
-	console.log(`Applying colors for ${listview.data.length} docs. Today: ${today}, Next 7: ${next_7_days}`);
 
 	listview.data.forEach(doc => {
 		const safe_name = doc.name.replace(/'/g, "\\'");
 		const $card = $(`.kanban-card[data-name='${safe_name}']`);
 
-		if (!$card.length) {
-			// Log occasionally or for specific cases if needed, but not for every missing card to avoid spam
+		if (!$card.length) return;
+
+		// 1. Status Check
+		const is_excluded = ["Closed Won", "Lost", "Closed Lost"].includes(doc.status);
+		$card.attr('data-doc-status', is_excluded ? 'excluded' : 'active');
+
+		if (is_excluded) {
+			$card.removeAttr('data-date-status');
 			return;
 		}
 
-		let bgColor = '';
-
-		if (doc.status === "Closed Won" || doc.status === "Lost" || doc.status === "Closed Lost") {
-			bgColor = '';
-		} else if (doc.expected_closing) {
+		// 2. Date Logic
+		if (doc.expected_closing) {
 			if (doc.expected_closing < today) {
-				bgColor = '#ffebee';
+				$card.attr('data-date-status', 'overdue');
 			} else if (doc.expected_closing >= today && doc.expected_closing <= next_7_days) {
-				bgColor = '#fff9c4';
+				$card.attr('data-date-status', 'soon');
+			} else {
+				$card.removeAttr('data-date-status');
 			}
-		}
-
-		console.log(`Doc: ${doc.name}, Status: ${doc.status}, Date: ${doc.expected_closing}, Target Color: ${bgColor || 'Default'}`);
-
-		if (bgColor) {
-			$card.attr('style', `background-color: ${bgColor} !important`);
-			$card.find('.kanban-card-body').attr('style', `background-color: ${bgColor} !important`);
 		} else {
-			$card.removeAttr('style');
-			$card.find('.kanban-card-body').removeAttr('style');
+			$card.removeAttr('data-date-status');
 		}
 	});
 }
