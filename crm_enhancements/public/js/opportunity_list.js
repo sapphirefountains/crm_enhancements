@@ -34,16 +34,23 @@ function setup_kanban_color_observer(listview) {
 }
 
 function apply_kanban_colors(listview) {
-	if (!listview || !listview.data) return;
+	if (!listview || !listview.data) {
+		console.log("No listview data found to apply colors.");
+		return;
+	}
 
 	const today = frappe.datetime.get_today();
 	const next_7_days = frappe.datetime.add_days(today, 7);
+	console.log(`Applying colors for ${listview.data.length} docs. Today: ${today}, Next 7: ${next_7_days}`);
 
 	listview.data.forEach(doc => {
 		const safe_name = doc.name.replace(/'/g, "\\'");
 		const $card = $(`.kanban-card[data-name='${safe_name}']`);
 
-		if (!$card.length) return;
+		if (!$card.length) {
+			// Log occasionally or for specific cases if needed, but not for every missing card to avoid spam
+			return;
+		}
 
 		let bgColor = '';
 
@@ -56,6 +63,8 @@ function apply_kanban_colors(listview) {
 				bgColor = '#fff9c4';
 			}
 		}
+
+		console.log(`Doc: ${doc.name}, Status: ${doc.status}, Date: ${doc.expected_closing}, Target Color: ${bgColor || 'Default'}`);
 
 		if (bgColor) {
 			$card.attr('style', `background-color: ${bgColor} !important`);
