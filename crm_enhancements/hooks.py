@@ -44,6 +44,7 @@ app_license = "mit"
 
 # include js in doctype views
 doctype_js = {"Opportunity": "public/js/opportunity.js"}
+doctype_list_js = {"Opportunity": "public/js/opportunity_list.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 
 custom_fields = {
