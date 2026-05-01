@@ -63,31 +63,36 @@ function setup_kanban_color_observer(listview) {
 function apply_kanban_colors(listview) {
 	const data = listview.data || (listview.kanban && listview.kanban.data);
 	
-	if (!data || data.length === 0) {
-		console.log("Kanban Debug: No data found in listview.data or listview.kanban.data");
-		return;
-	}
-
-	const $all_cards = $('.kanban-card');
-	console.log(`Kanban Debug: Processing ${data.length} data records. Found ${$all_cards.length} .kanban-card elements in DOM.`);
-
-	if ($all_cards.length > 0 && data.length > 0) {
-		console.log("Kanban Debug: First DOM card data-name:", $all_cards.first().attr('data-name'));
-		console.log("Kanban Debug: First data record name:", data[0].name);
-	}
+	if (!data || data.length === 0) return;
 
 	const today = frappe.datetime.get_today();
 	const next_7_days = frappe.datetime.add_days(today, 7);
 
-	data.forEach((doc, index) => {
-		const safe_name = doc.name.replace(/'/g, "\\'");
-		const $card = $(`.kanban-card[data-name='${safe_name}']`);
+	// Create a map for faster lookup: { "CRM-OPP-2026-00003": { doc data } }
+	const dataMap = {};
+	data.forEach(doc => {
+		dataMap[doc.name] = doc;
+	});
 
-		if (index < 3) {
-			console.log(`Kanban Debug [${index}]: Name=${doc.name}, Date=${doc.expected_closing}, Status=${doc.status}, CardFound=${$card.length > 0}`);
+	$('.kanban-card').each(function() {
+		const $card = $(this);
+		
+		// In newer Frappe versions, data-name is gone. The name is usually in the title.
+		let card_name = $card.attr('data-name'); 
+		
+		if (!card_name) {
+			// Fallback 1: Look for an anchor tag or text in the title that matches a record name
+			// This regex matches things like CRM-OPP-2026-00003
+			const card_text = $card.text();
+			const match = card_text.match(/[A-Z0-9-]{5,}/); // Broad match for DocName patterns
+			if (match && dataMap[match[0]]) {
+				card_name = match[0];
+			}
 		}
 
-		if (!$card.length) return;
+		if (!card_name || !dataMap[card_name]) return;
+
+		const doc = dataMap[card_name];
 
 		// 1. Status Check
 		const is_excluded = ["Closed Won", "Lost", "Closed Lost"].includes(doc.status);
