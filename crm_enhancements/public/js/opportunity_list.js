@@ -58,19 +58,31 @@ function setup_kanban_color_observer(listview) {
 }
 
 function apply_kanban_colors(listview) {
-	// In Kanban, data might be in listview.data or listview.kanban.data
 	const data = listview.data || (listview.kanban && listview.kanban.data);
 	
 	if (!data || data.length === 0) {
+		console.log("Kanban Debug: No data found in listview.data or listview.kanban.data");
 		return;
+	}
+
+	const $all_cards = $('.kanban-card');
+	console.log(`Kanban Debug: Processing ${data.length} data records. Found ${$all_cards.length} .kanban-card elements in DOM.`);
+
+	if ($all_cards.length > 0 && data.length > 0) {
+		console.log("Kanban Debug: First DOM card data-name:", $all_cards.first().attr('data-name'));
+		console.log("Kanban Debug: First data record name:", data[0].name);
 	}
 
 	const today = frappe.datetime.get_today();
 	const next_7_days = frappe.datetime.add_days(today, 7);
 
-	data.forEach(doc => {
+	data.forEach((doc, index) => {
 		const safe_name = doc.name.replace(/'/g, "\\'");
 		const $card = $(`.kanban-card[data-name='${safe_name}']`);
+
+		if (index < 3) {
+			console.log(`Kanban Debug [${index}]: Name=${doc.name}, Date=${doc.expected_closing}, Status=${doc.status}, CardFound=${$card.length > 0}`);
+		}
 
 		if (!$card.length) return;
 
