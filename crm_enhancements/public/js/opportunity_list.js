@@ -59,14 +59,23 @@ function setup_kanban_color_observer(listview) {
 }
 
 function apply_kanban_attributes(listview) {
-	if (!listview || !listview.data) return;
+	if (!listview || !listview.data || listview.data.length === 0) {
+		console.log("Kanban color check: No data found in listview.");
+		return;
+	}
 
 	const today = frappe.datetime.get_today();
 	const next_7_days = frappe.datetime.add_days(today, 7);
+	
+	console.log(`Kanban color check: Processing ${listview.data.length} docs. Today: ${today}`);
 
-	listview.data.forEach(doc => {
+	listview.data.forEach((doc, index) => {
 		const safe_name = doc.name.replace(/'/g, "\\'");
 		const $card = $(`.kanban-card[data-name='${safe_name}']`);
+
+		if (index < 5) { // Log first 5 for debugging
+			console.log(`Checking Doc: ${doc.name}, Status: ${doc.status}, Date: ${doc.expected_closing}, Card Found: ${$card.length > 0}`);
+		}
 
 		if (!$card.length) return;
 
